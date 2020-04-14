@@ -1,0 +1,12 @@
+"""
+Home Co
+DB4.X6.0 - furnace valve
+DB4.X6.1 - Living room valve
+DB4.X6.2 - Hall room valve
+DB4.X6.3 - Bedroom 1 valve
+DB4.X6.4 - Bedroom 2 valve
+DB4.X6.5 - TV room valve
+DB4.X6.6 - Bathroom valve
+DB4.X6.7 - WC valve
+
+"""

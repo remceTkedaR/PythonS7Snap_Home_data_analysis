@@ -4,7 +4,21 @@
 # radek69tecmer@gmail.com
 # ------------------------
 
+"""
+Home Co
+DB4.X6.0 - furnace valve
+DB4.X6.1 - Living room valve
+DB4.X6.2 - Hall room valve
+DB4.X6.3 - Bedroom 1 valve
+DB4.X6.4 - Bedroom 2 valve
+DB4.X6.5 - TV room valve
+DB4.X6.6 - Bathroom valve
+DB4.X6.7 - WC valve
+
+"""
+
 import snap7
+from snap7.util import *
 import struct
 import csv
 import time
@@ -17,16 +31,30 @@ import locale
 # time start to  delay
 last_time_ms = int(round(time.time() * 10000))
 
-# Path to save file path:/root/Dokumenty/PythonS7Snap/file_data.csv
-path_input = input("please enter where to save the files: ")
-path_save = str(path_input)
+# Path to save file path: /root/Projects_Python/Python_S7Snap_S7-1200_Home/file_data.csv
+#path_input = input("please enter where to save the files: ")
+#path_save = str(path_input)
+
+# Function read data from instance db
+
+
+def data_block_item(db_number, inst_number, data):
+    item_val = plc.read_area(db_number, inst_number, data)
+    item_struct = struct.iter_unpack("!f", item_val[:4])
+    for item_pack in item_struct:
+        item_unpack = item_pack
+    # Convert tuple to float
+    # using join() + float() + str() + generator expression
+    result = float('.'.join(str(ele) for ele in item_unpack))
+    item_str_value = '%-.4f' % result
+    return item_str_value
 
 
 # Function read data from instance db
 
 
 def data_block_read(db_number, inst_number, data):
-    db_val = client.db_read(db_number, inst_number, data)
+    db_val = plc.db_read(db_number, inst_number, data)
     value_struct = struct.iter_unpack("!f", db_val[:4])
     for value_pack in value_struct:
         value_unpack = value_pack
@@ -40,11 +68,18 @@ def data_block_read(db_number, inst_number, data):
 
 
 def read_coils_s7(byte_out, byte_size, out_bit):
-    byte_bit = client.ab_read(byte_out, byte_size)
+    byte_bit = plc.ab_read(byte_out, byte_size)
     byte_bit_array = (byte_bit[0])
     byte_coils = bin(byte_bit_array).replace("0b", "")
     result = (byte_coils[out_bit])
     return result
+
+
+# Function get the boolean value from location in bytes from DB instance
+def db_read_byte(plc, db_number, inst_number, size, byte_index, bit_index):
+    db_area = plc.db_read(db_number, inst_number, size)
+    db_byte = get_bool(db_area, byte_index, bit_index)
+    return db_byte
 
 
 b = 0
@@ -52,12 +87,14 @@ b = 0
 while True:
 
     # Opened file to writing
-    file = open(path_save + 'file_data.csv', 'w+')
+    file = open('file_data.csv', 'w+')
     file_data_csv = csv.writer(file)
 
     # file headers to saving
     file_data_csv.writerow(
-        ['Date', 'Time', 'Outside', 'Living room', 'Hall', 'Bedroom 1', 'Bedroom 2', 'Bathroom', 'Room'])
+        ['Date', 'Time', 'Outside', 'Living room', 'Hall', 'Bedroom 1', 'Bedroom 2', 'Bathroom', 'Room'
+         , 'furnace valve', 'Living room valve', 'Hall room valve', 'Bedroom 1 valve', 'Bedroom 2 valve',
+         'TV room valve', 'Bathroom valve', 'WC valve'])
 
     # index measurement loop
     a = 0
@@ -70,23 +107,23 @@ while True:
     while a < 3:
         # execution condition delay time
         diff_time_ms = int(round(time.time() * 10000)) - last_time_ms
-        # This is delay 80000ms = 8s
-        if diff_time_ms >= 3000000:
+        # This is delay 3000000ms = 5min
+        if diff_time_ms >= 3000:
             last_time_ms = int(round(time.time() * 10000))
 
             # Stamp to time & date
             now = datetime.now()
             today = date.today()
             time_today = now.strftime("%H:%M:%S")
-
+            snap7.snap7types.
             #  connect to S7 1200
             try:
-                client = snap7.client.Client()
-                client.connect('192.168.1.121', 0, 1)
+                plc = snap7.client.Client()
+                plc.connect('192.168.1.121', 0, 1)
             except snap7.snap7exceptions.Snap7Exception:
                 time.sleep(0.2)
-                client = snap7.client.Client()
-                client.connect('192.168.1.121', 0, 1)
+                plc = snap7.client.Client()
+                plc.connect('192.168.1.121', 0, 1)
 
             # Read temperature Outside (db 3, instance 24, data =" real" )
             outside = data_block_read(3, 24, 4)
@@ -109,18 +146,28 @@ while True:
             # Read temperature Room TV (db 2, instance 36, data =" real" )
             room_tv = data_block_read(2, 36, 4)
 
-            client.disconnect()
+            # Status Valves Home
+            furnace_valve = db_read_byte(plc, 4, 6, 1, 0, 0)
+            living_room_valve = db_read_byte(plc, 4, 6, 1, 0, 1)
+            hall_room_valve = db_read_byte(plc, 4, 6, 1, 0, 2)
+            bedroom1_valve = db_read_byte(plc, 4, 6, 1, 0, 3)
+            bedroom2_valve = db_read_byte(plc, 4, 6, 1, 0, 4)
+            bathroom_valve = db_read_byte(plc, 4, 6, 1, 0, 5)
+            room_tv_valve = db_read_byte(plc, 4, 6, 1, 0, 6)
+
+            plc.disconnect()
 
             # save to file
 
             file_data_csv.writerow([today, time_today, outside, living_room, hall, bedroom_1, bedroom_2,
-                                    bathroom, room_tv])
+                                    bathroom, room_tv, furnace_valve, living_room_valve, hall_room_valve,
+                                    bedroom1_valve, bedroom2_valve, bathroom_valve, room_tv_valve])
 
             a += 1
             print(a)
             if a == 3:
                 file.close()
-                os.rename(path_save + 'file_data.csv', path_save + str(filename))
+                os.rename('file_data.csv', str(filename))  # rename file
 
                 print('close file')
                 break
