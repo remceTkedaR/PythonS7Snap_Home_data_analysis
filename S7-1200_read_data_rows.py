@@ -18,6 +18,7 @@ DB4.X6.7 - WC valve
 """
 
 import snap7
+import snap7.snap7exceptions
 from snap7.util import *
 import struct
 import csv
@@ -28,12 +29,30 @@ import fnmatch
 import os
 import locale
 
+# Find existing file mame file_data csv
+
+
+def max_number_file():
+    file_list = []
+    # Find existing file mame file_data csv
+    f_names = ([file_find for root, dirs, files in os.walk(".", topdown=False)
+                for file_find in files
+                if file_find.endswith('.csv')  #or file.endswith('.png') or file.endswith('.pdf')
+                ])
+    for f_name in f_names:
+        f_name_new = f_name.replace('file_data', '')  # cutoff file_data
+        f_new = f_name_new.replace('.csv', '')  # cutoff .csv
+        file_list.append(f_new)  # digit received
+    try:
+        max_number_str = max(file_list)
+        number_int = (int(max_number_str) + 1)
+    except ValueError:  # if there are no files, enter zero
+        number_int = 0
+    return number_int
+
+
 # time start to  delay
 last_time_ms = int(round(time.time() * 10000))
-
-# Path to save file path: /root/Projects_Python/Python_S7Snap_S7-1200_Home/file_data.csv
-#path_input = input("please enter where to save the files: ")
-#path_save = str(path_input)
 
 # Function read data from instance db
 
@@ -81,8 +100,10 @@ def db_read_byte(plc, db_number, inst_number, size, byte_index, bit_index):
     db_byte = get_bool(db_area, byte_index, bit_index)
     return db_byte
 
+# Find number new file
 
-b = 0
+
+b = max_number_file()
 
 while True:
 
@@ -103,23 +124,24 @@ while True:
     # index for new file name
     b += 1
 
-    # measurement loop
-    while a < 3:
+    # measurement loop, set number of lines in the file
+    while a < 12:
         # execution condition delay time
         diff_time_ms = int(round(time.time() * 10000)) - last_time_ms
         # This is delay 3000000ms = 5min
-        if diff_time_ms >= 3000:
+        if diff_time_ms >= 3000000:
             last_time_ms = int(round(time.time() * 10000))
 
             # Stamp to time & date
             now = datetime.now()
             today = date.today()
             time_today = now.strftime("%H:%M:%S")
-            snap7.snap7types.
+
             #  connect to S7 1200
             try:
                 plc = snap7.client.Client()
                 plc.connect('192.168.1.121', 0, 1)
+                error_connect = plc.get_connected()
             except snap7.snap7exceptions.Snap7Exception:
                 time.sleep(0.2)
                 plc = snap7.client.Client()
